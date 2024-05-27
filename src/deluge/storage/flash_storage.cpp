@@ -332,11 +332,12 @@ void resetAutomationSettings() {
 
 void readSettings() {
 	std::span buffer{(uint8_t*)miscStringBuffer, kFilenameBufferSize};
-	R_SFLASH_ByteRead(0x80000 - 0x1000, buffer.data(), kFilenameBufferSize, SPIBSC_CH, SPIBSC_CMNCR_BSZ_SINGLE,
-	                  SPIBSC_1BIT, SPIBSC_OUTPUT_ADDR_24);
+	//	R_SFLASH_ByteRead(0x80000 - 0x1000, buffer.data(), kFilenameBufferSize, SPIBSC_CH, SPIBSC_CMNCR_BSZ_SINGLE,
+	//	                  SPIBSC_1BIT, SPIBSC_OUTPUT_ADDR_24);
 
 	settingsBeenRead = true;
-
+	resetSettings();
+	return;
 	FirmwareVersion::Type firmwareType{buffer[FIRMWARE_TYPE]};
 
 	// If no settings were previously saved, get out
@@ -348,10 +349,10 @@ void readSettings() {
 	FirmwareVersion savedVersion = (firmwareType != FirmwareVersion::Type::COMMUNITY)
 	                                   ? FirmwareVersion(firmwareType, {0, 0, 0})
 	                                   : FirmwareVersion::community({
-	                                       .major = buffer[VERSION_MAJOR],
-	                                       .minor = buffer[VERSION_MINOR],
-	                                       .patch = buffer[VERSION_PATCH],
-	                                   });
+	                                         .major = buffer[VERSION_MAJOR],
+	                                         .minor = buffer[VERSION_MINOR],
+	                                         .patch = buffer[VERSION_PATCH],
+	                                     });
 
 	for (int chan = 0; chan < NUM_CV_CHANNELS; ++chan) {
 		cvEngine.setCVVoltsPerOctave(chan, buffer[CV_VOLTS_PER_OCTAVE + chan]);
@@ -931,9 +932,9 @@ void writeSettings() {
 
 	buffer[170] = defaultHoldTime;
 
-	R_SFLASH_EraseSector(0x80000 - 0x1000, SPIBSC_CH, SPIBSC_CMNCR_BSZ_SINGLE, 1, SPIBSC_OUTPUT_ADDR_24);
-	R_SFLASH_ByteProgram(0x80000 - 0x1000, buffer.data(), 256, SPIBSC_CH, SPIBSC_CMNCR_BSZ_SINGLE, SPIBSC_1BIT,
-	                     SPIBSC_OUTPUT_ADDR_24);
+	// R_SFLASH_EraseSector(0x80000 - 0x1000, SPIBSC_CH, SPIBSC_CMNCR_BSZ_SINGLE, 1, SPIBSC_OUTPUT_ADDR_24);
+	// R_SFLASH_ByteProgram(0x80000 - 0x1000, buffer.data(), 256, SPIBSC_CH, SPIBSC_CMNCR_BSZ_SINGLE, SPIBSC_1BIT,
+	//                      SPIBSC_OUTPUT_ADDR_24);
 }
 
 } // namespace FlashStorage

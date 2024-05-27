@@ -768,12 +768,12 @@ extern "C" int32_t deluge_main(void) {
 
 	// Setup SPIBSC. Crucial that this only be done now once everything else is running, because I've injected graphics
 	// and audio routines into the SPIBSC wait routines, so that has to be running
-	setPinMux(4, 2, 2);
-	setPinMux(4, 3, 2);
-	setPinMux(4, 4, 2);
-	setPinMux(4, 5, 2);
-	setPinMux(4, 6, 2);
-	setPinMux(4, 7, 2);
+	setPinMux(4, 2, 3);
+	setPinMux(4, 3, 3);
+	setPinMux(4, 4, 3);
+	setPinMux(4, 5, 3);
+	setPinMux(4, 6, 3);
+	setPinMux(4, 7, 3);
 	initSPIBSC(); // This will run the audio routine! Ideally, have external RAM set up by now.
 
 	PIC::requestFirmwareVersion(); // Request PIC firmware version
@@ -801,11 +801,11 @@ extern "C" int32_t deluge_main(void) {
 			return 0;
 
 		case RESET_SETTINGS:
-			if (!otherButtonsOrEvents) {
-				display->displayPopup(deluge::l10n::get(deluge::l10n::String::STRING_FOR_FACTORY_RESET));
-				FlashStorage::resetSettings();
-				FlashStorage::writeSettings();
-			}
+			//			if (!otherButtonsOrEvents) {
+			//				display->displayPopup(deluge::l10n::get(deluge::l10n::String::STRING_FOR_FACTORY_RESET));
+			//				FlashStorage::resetSettings();
+			//				FlashStorage::writeSettings();
+			//			}
 			return 0;
 
 		case UNKNOWN_BREAK:
