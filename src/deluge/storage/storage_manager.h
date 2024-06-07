@@ -31,12 +31,8 @@ extern "C" {
 
 extern void deleteOldSongBeforeLoadingNew();
 
-struct FileSystemStuff {
-	FatFS::Filesystem fileSystem; /* File system object */
-	FIL currentFile;              /* File object */
-};
 
-extern struct FileSystemStuff fileSystemStuff;
+extern FatFS::Filesystem fileSystem;
 
 class Instrument;
 class PlaybackMode;
@@ -109,6 +105,7 @@ public:
 
 	// Private member variables for XML display and parsing:
 public:
+	FIL	 writeFIL;
 	char* writeClusterBuffer;
 	uint8_t indentAmount;
 	int32_t fileWriteBufferCurrentPos;
@@ -163,6 +160,7 @@ public:
 	                  bool ignoreIncorrectFirmware = false);
 	void reset() override;
 public:
+	FIL	 readFIL;
 	UINT currentReadBufferEndPos;
 	int32_t fileReadBufferCurrentPos;
 
@@ -214,7 +212,7 @@ public:
 	                  char const* altTagName = "", bool ignoreIncorrectFirmware = false);
 
 	Error initSD();
-	bool closeFile();
+	bool closeFile(FIL &fileToClose);
 
 	bool fileExists(char const* pathName);
 	bool fileExists(char const* pathName, FilePointer* fp);
@@ -230,7 +228,7 @@ public:
 	Drum* createNewDrum(DrumType drumType);
 	Error loadSynthToDrum(Song* song, InstrumentClip* clip, bool mayReadSamplesFromFiles, SoundDrum** getInstrument,
 	                      FilePointer* filePointer, String* name, String* dirPath);
-	void openFilePointer(FilePointer* fp);
+	void openFilePointer(FilePointer* fp, XMLDeserializer& reader);
 
 	Error checkSpaceOnCard();
 private:
