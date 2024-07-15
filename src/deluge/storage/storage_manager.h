@@ -77,6 +77,7 @@ public:
 
 	Error closeAfterWriting(char const* path, char const* beginningString, char const* endString);
 	void writeChars(char const* output);
+
 protected:
 	void resetWriter();
 	Error writeBufferToFile();
@@ -264,9 +265,6 @@ private:
 	Error openInstrumentFile(OutputType outputType, FilePointer* filePointer);
 };
 
-
-
-
 class JSONSerializer : public Serializer, public FileWriter {
 public:
 	JSONSerializer();
@@ -295,10 +293,6 @@ public:
 private:
 	uint8_t indentAmount;
 };
-
-
-
-
 
 extern StorageManager storageManager;
 extern FILINFO staticFNO;
