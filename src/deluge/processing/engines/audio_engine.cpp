@@ -735,9 +735,7 @@ startAgain:
 			reverbSidechain.registerHit(sideChainHitPending);
 		}
 
-
 		sidechainOutput = reverbSidechain.render(numSamples, reverbSidechainShapeInEffect);
-
 	}
 
 	int32_t reverbAmplitudeL;
