@@ -392,11 +392,6 @@ void routineWithClusterLoading(bool mayProcessUserActionsBetween) {
 
 extern uint16_t g_usb_usbmode;
 
-#if JFTRACE
-Debug::AverageDT aeCtr("audio", Debug::mS);
-Debug::AverageDT rvb("reverb", Debug::uS);
-#endif
-
 uint8_t numRoutines = 0;
 
 // not in header (private to audio engine)
@@ -516,9 +511,6 @@ inline void setDireness(size_t numSamples) { // Consider direness and culling - 
 
 /// inner loop of audio rendering, deliberately not in header
 [[gnu::hot]] void routine_() {
-#if JFTRACE
-	aeCtr.note();
-#endif
 
 #ifndef USE_TASK_MANAGER
 	playbackHandler.routine();
@@ -742,14 +734,10 @@ startAgain:
 		if (sideChainHitPending != 0) {
 			reverbSidechain.registerHit(sideChainHitPending);
 		}
-#if JFTRACE
-		rvb.begin();
-#endif
+
 
 		sidechainOutput = reverbSidechain.render(numSamples, reverbSidechainShapeInEffect);
-#if JFTRACE
-		rvb.note();
-#endif
+
 	}
 
 	int32_t reverbAmplitudeL;
