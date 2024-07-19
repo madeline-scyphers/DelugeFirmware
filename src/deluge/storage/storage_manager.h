@@ -145,8 +145,6 @@ public:
 	                            char const* endString = nullptr) override;
 	void reset() override;
 
-	FIL writeFIL;
-
 private:
 	uint8_t indentAmount;
 };
@@ -288,8 +286,6 @@ public:
 	Error closeFileAfterWriting(char const* path = nullptr, char const* beginningString = nullptr,
 	                            char const* endString = nullptr) override;
 	void reset() override;
-
-	FIL writeFIL;
 
 private:
 	uint8_t indentAmount;
