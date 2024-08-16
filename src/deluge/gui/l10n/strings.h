@@ -881,7 +881,7 @@ enum class String : size_t {
 	STRING_FOR_STOP_EXPORT_STEMS,
 	STRING_FOR_DONE_EXPORT_STEMS,
 
-	// strings for chord keyboard
+	// strings for keyboards
 	STRING_FOR_KEYBOARD_VIEW_CANT_ENTER_SCALE,
 
 	// strings for configure song macros

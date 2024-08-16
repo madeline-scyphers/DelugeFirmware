@@ -25,6 +25,8 @@
 
 namespace deluge::gui::ui::keyboard::layout {
 
+constexpr int8_t kVerticalPages = ((kUniqueChords + kDisplayHeight - 1) / kDisplayHeight); // Round up division
+
 /// @brief Represents a keyboard layout for chord-based input.
 class KeyboardLayoutChord : public ColumnControlsKeyboard {
 public:
@@ -43,16 +45,16 @@ public:
 	bool supportsInstrument() override { return true; }
 	bool supportsKit() override { return false; }
 
-	RequiredScaleMode requiredScaleMode() override { return RequiredScaleMode::Disabled; }
-
 protected:
 	bool allowSidebarType(ColumnControlFunction sidebarType) override;
 
 private:
 	void drawChordName(int16_t noteCode, const char* chordName, const char* voicingName = "");
-	inline uint8_t noteFromCoords(int32_t x) { return getState().chord.noteOffset + x; }
+	inline int32_t noteFromCoords(int32_t x) { return getState().chord.noteOffset + x; }
 
 	std::array<RGB, kOctaveSize> noteColours;
+	std::array<RGB, kVerticalPages> offNoteColours;
+
 };
 
 }; // namespace deluge::gui::ui::keyboard::layout
