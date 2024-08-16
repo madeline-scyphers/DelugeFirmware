@@ -53,7 +53,7 @@ private:
 	inline int32_t noteFromCoords(int32_t x) { return getState().chord.noteOffset + x; }
 
 	std::array<RGB, kOctaveSize> noteColours;
-	std::array<RGB, kVerticalPages> offNoteColours;
+	std::array<RGB, kVerticalPages> pageColours;
 
 };
 

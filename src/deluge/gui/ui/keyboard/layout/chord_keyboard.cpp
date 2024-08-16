@@ -20,7 +20,6 @@
 #include "gui/colour/colour.h"
 #include "gui/ui/audio_recorder.h"
 #include "gui/ui/browser/sample_browser.h"
-#include "gui/ui/keyboard/chords.h"
 #include "gui/ui/sound_editor.h"
 #include "hid/display/display.h"
 #include "io/debug/log.h"
@@ -96,12 +95,17 @@ void KeyboardLayoutChord::precalculate() {
 	KeyboardStateChord& state = getState().chord;
 
 	// Pre-Buffer colours for next renderings
-	for (int32_t i = 0; i < noteColours.size(); ++i) {
-		noteColours[i] = getCurrentInstrumentClip()->getMainColourFromY(((state.noteOffset + i) % state.rowInterval), state.rowColorMultiplier);
-		// noteColours[i] = getNoteColour(((state.noteOffset + i) % state.rowInterval) * state.rowColorMultiplier);
+	for (int32_t y = 0; y < kDisplayHeight; ++y) {
+		int32_t chordNo = y + state.chordList.chordRowOffset;
+		ChordQuality quality = state.chordList.chords[chordNo].quality;
+		noteColours[y] = qualityColours[quality];
 	}
-	for (int32_t i = 0; i < offNoteColours.size(); ++i) {
-		offNoteColours[i] = getNoteColour(((state.noteOffset + i) % state.rowInterval) * state.rowColorMultiplier);
+	// for (int32_t i = 0; i < noteColours.size(); ++i) {
+	// 	noteColours[i] = getNoteColour(((state.noteOffset + i) % state.rowInterval) * state.rowColorMultiplier);
+	// }
+	uint8_t hueStepSize = 192 / (kVerticalPages - 1);  // 192 is the hue range for the rainbow
+	for (int32_t i = 0; i < pageColours.size(); ++i) {
+		pageColours[i] = getNoteColour(i * hueStepSize);
 	}
 }
 
@@ -113,28 +117,41 @@ void KeyboardLayoutChord::renderPads(RGB image[][kDisplayWidth + kSideBarWidth])
 
 		for (int32_t x = 0; x < kDisplayWidth; x++) {
 			int32_t chordNo = y + state.chordList.chordRowOffset;
+			int32_t pageNo = std::min<int32_t>(chordNo / kDisplayHeight, kVerticalPages - 1);
 			if (getScaleModeEnabled()) {
 				NoteSet& scaleNotes = getScaleNotes();
 				int32_t noteCode = noteFromCoords(x);
 				uint16_t noteWithinScale = (uint16_t)(noteCode - getRootNote()) % kOctaveSize;
 				if (scaleNotes.has(noteWithinScale)) {
-					image[y][x] = noteColours[x % noteColours.size()];
+					// image[y][x] = noteColours[x % noteColours.size()];
+					image[y][x] = noteColours[y];
 				}
 				else {
-					// image[y][x] = offNoteColours[x % offNoteColours.size()];
-					image[y][x] = colours::black;
+					image[y][x] = pageColours[pageNo].dim(5);
 				}
 			}
 
-			// We add a colored row every 4 chords to help with navigation
-			// We also use different colors for the rows to help with navigation
-			// if (chordNo % 4 == 0) {
-			// 	int32_t rowNo = chordNo / 4;
-			// 	image[y][x] = noteColours[rowNo % kOctaveSize];
-			// }
 			else {
-				image[y][x] = noteColours[x % noteColours.size()];
+				// We add a colored rows to the top and bottom of a page to help with navigation
+				// We also use different colors for each page
+				if (
+					x == 12 || x == 13  // show we've reached the start of a new page
+					// || (chordNo % 8 == kDisplayHeight - 1)  // show we've reached the end of a page
+					// || (chordNo == kUniqueChords - 1)  // show we've reach the very top
+					) {
+						image[y][x] = pageColours[pageNo].dim(5);
+					}
+					else {
+						image[y][x] = noteColours[y];
+					}
 			}
+			// if (
+			// 	(chordNo % 8 == 0)  // show we've reached the start of a new page
+			// 	|| (chordNo % 8 == kDisplayHeight - 1)  // show we've reached the end of a page
+			// 	|| (chordNo == kUniqueChords - 1)  // show we've reach the very top
+			// 	) {
+			// 	image[y][x] = pageColours[pageNo].dim(4);
+			// }
 		}
 	}
 }

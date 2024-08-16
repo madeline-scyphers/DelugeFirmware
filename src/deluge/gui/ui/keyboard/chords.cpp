@@ -22,7 +22,7 @@
 namespace deluge::gui::ui::keyboard {
 
 ChordList::ChordList()
-    : chords{{"", {{0, NONE, NONE, NONE, NONE, NONE}}}, // TODO remove when root fixed on bottom of keyboard
+    : chords{{"", OTHER, {{0, NONE, NONE, NONE, NONE, NONE}}}, // TODO remove when root fixed on bottom of keyboard
              kMajor,
              kMinor,
              kDim,
