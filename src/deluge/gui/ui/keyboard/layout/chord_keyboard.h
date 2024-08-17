@@ -50,7 +50,11 @@ protected:
 
 private:
 	void drawChordName(int16_t noteCode, const char* chordName, const char* voicingName = "");
-	inline int32_t noteFromCoords(int32_t x) { return getState().chord.noteOffset + x; }
+	inline int32_t getChordNo(int32_t y) {
+		return getState().chord.chordList.chordRowOffset - getState().chord.rootRows + y;
+	}
+
+	int32_t noteFromCoords(int32_t x, int32_t y);
 
 	std::array<RGB, kDisplayHeight> padQualityColours;
 	std::array<RGB, kOctaveSize> noteColours;

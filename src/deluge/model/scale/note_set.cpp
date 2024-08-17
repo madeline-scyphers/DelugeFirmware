@@ -121,6 +121,48 @@ void NoteSet::addMajorDependentModeNotes(uint8_t i, bool preferHigher, const Not
 	}
 }
 
+// Function to shift notes up by one semitone with wrap-around
+NoteSet NoteSet::toOffset(uint8_t offset) {
+	NoteSet newSet;
+	// Extract the last 12 bits
+	uint16_t notes = bits & 0x0FFF; // 0x0FFF = 0000 1111 1111 1111 in binary
+
+	// Normalize offset to be within the range [0, 11]
+	offset = offset % 12;
+
+	// If offset by 0, return the original chord
+	if (offset == 0) {
+		newSet.bits = bits;
+		return newSet;
+	}
+
+	// Bits that will wrap around
+	uint16_t wrapAroundBits = (notes >> (12 - offset)) & ((1 << offset) - 1);
+
+	// Shift notes to the left by offset and wrap around
+	notes = ((notes << offset) & 0x0FFF) | wrapAroundBits;
+
+	newSet.bits = (bits & 0xF000) | notes;
+	return newSet;
+
+	// // Check if the leftmost bit (bit 11) is set
+	// bool wrapAroundBit = notes & (1 << 11);
+
+	// // Shift notes to the left by 1 bit
+	// notes = (notes << 1) & 0x0FFF; // Mask again to ensure it stays within 12 bits
+
+	// // If the wrap-around bit was set, move it to the rightmost position (bit 0)
+	// if (wrapAroundBit) {
+	//     notes |= 1;
+	// }
+
+	// Combine with the original chord, keeping the upper 4 bits intact
+	// (bits & 0xF000) | notes;
+	// NoteSet newSet;
+	// newSet.bits = (bits & 0xF000) | notes;
+	// return newSet;
+}
+
 NoteSet NoteSet::toImpliedScale() const {
 	bool moreMajor = (majorness() >= 0);
 

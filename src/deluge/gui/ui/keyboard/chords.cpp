@@ -22,26 +22,10 @@
 namespace deluge::gui::ui::keyboard {
 
 ChordList::ChordList()
-    : chords{{"", OTHER, {{0, NONE, NONE, NONE, NONE, NONE}}}, // TODO remove when root fixed on bottom of keyboard
-             kMajor,
-             kMinor,
-             kDim,
-             kM7,
-             k7,
-             kMinor7,
-             kMinor7b5,
-             kSus4,
-             kSus2,
-             kAug,
-             kM9,
-             k9,
-             kMinor9,
-             kM11,
-             k11,
-             kMinor11,
-             kM13,
-             k13,
-             kMinor13} {
+    : chords{// {"", OTHER, NoteSet({ROOT}), {{ROOT, NONE, NONE, NONE, NONE, NONE}}}, // TODO remove when root fixed on
+             // bottom of keyboard
+             kMajor, kMinor, kDim,    kM7,  k7,  kMinor7,  kMinor7b5, kSus4, kSus2,   kAug,
+             kM9,    k9,     kMinor9, kM11, k11, kMinor11, kM13,      k13,   kMinor13} {
 }
 
 Voicing ChordList::getChordVoicing(int32_t chordNo) {

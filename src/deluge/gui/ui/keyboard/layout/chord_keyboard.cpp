@@ -23,6 +23,7 @@
 #include "gui/ui/sound_editor.h"
 #include "hid/display/display.h"
 #include "io/debug/log.h"
+#include "model/scale/note_set.h"
 #include "model/settings/runtime_feature_settings.h"
 #include "util/functions.h"
 #include <stdlib.h>
@@ -32,24 +33,32 @@ namespace deluge::gui::ui::keyboard::layout {
 void KeyboardLayoutChord::evaluatePads(PressedPad presses[kMaxNumKeyboardPadPresses]) {
 	currentNotesState = NotesState{}; // Erase active notes
 	KeyboardStateChord& state = getState().chord;
+	Voicing voicing;
+	const char* name;
 
 	// We run through the presses in reverse order to display the most recent pressed chord on top
 	for (int32_t idxPress = kMaxNumKeyboardPadPresses - 1; idxPress >= 0; --idxPress) {
 
 		PressedPad pressed = presses[idxPress];
 		if (pressed.active && pressed.x < kDisplayWidth) {
-
-			int32_t chordNo = pressed.y + state.chordList.chordRowOffset;
-
-			Voicing voicing = state.chordList.getChordVoicing(chordNo);
-			drawChordName(noteFromCoords(pressed.x), state.chordList.chords[chordNo].name, voicing.supplementalName);
+			int16_t noteCode = noteFromCoords(pressed.x, pressed.y);
+			if (pressed.y < state.rootRows) {
+				voicing = {0, NONE, NONE, NONE, NONE, NONE, NONE};
+				name = "";
+			}
+			else {
+				int32_t chordNo = getChordNo(pressed.y);
+				name = state.chordList.chords[chordNo].name;
+				voicing = state.chordList.getChordVoicing(chordNo);
+			}
+			drawChordName(noteCode, name, voicing.supplementalName);
 
 			for (int i = 0; i < kMaxChordKeyboardSize; i++) {
 				int32_t offset = voicing.offsets[i];
 				if (offset == NONE) {
 					continue;
 				}
-				enableNote(noteFromCoords(pressed.x) + offset, velocity);
+				enableNote(noteCode + offset, velocity);
 			}
 		}
 	}
@@ -72,6 +81,17 @@ void KeyboardLayoutChord::handleHorizontalEncoder(int32_t offset, bool shiftEnab
 		return;
 	}
 	KeyboardStateChord& state = getState().chord;
+	if (shiftEnabled) {
+		state.rootRows += offset;
+		if (state.rootRows < 0) {
+			state.rootRows = 0;
+		}
+		else if (state.rootRows > 4) {
+			state.rootRows = 4;
+		}
+		precalculate();
+		return;
+	}
 
 	if (encoderPressed) {
 		for (int32_t idxPress = kMaxNumKeyboardPadPresses - 1; idxPress >= 0; --idxPress) {
@@ -79,7 +99,7 @@ void KeyboardLayoutChord::handleHorizontalEncoder(int32_t offset, bool shiftEnab
 			PressedPad pressed = presses[idxPress];
 			if (pressed.active && pressed.x < kDisplayWidth) {
 
-				int32_t chordNo = pressed.y + state.chordList.chordRowOffset;
+				int32_t chordNo = getChordNo(pressed.y);
 
 				state.chordList.adjustVoicingOffset(chordNo, offset);
 			}
@@ -100,7 +120,7 @@ void KeyboardLayoutChord::precalculate() {
 
 	// Pre-Buffer colours for next renderings
 	for (int32_t y = 0; y < kDisplayHeight; ++y) {
-		int32_t chordNo = y + state.chordList.chordRowOffset;
+		int32_t chordNo = getChordNo(y);
 		ChordQuality quality = state.chordList.chords[chordNo].quality;
 		padQualityColours[y] = qualityColours[quality];
 	}
@@ -116,21 +136,79 @@ void KeyboardLayoutChord::precalculate() {
 void KeyboardLayoutChord::renderPads(RGB image[][kDisplayWidth + kSideBarWidth]) {
 	KeyboardStateChord& state = getState().chord;
 
-	for (int32_t y = 0; y < kDisplayHeight; ++y) {
+	bool inScaleMode = getScaleModeEnabled();
 
-		for (int32_t x = 0; x < kDisplayWidth; x++) {
-			int32_t chordNo = y + state.chordList.chordRowOffset;
+	// Precreate list of all scale notes per octave
+	NoteSet octaveScaleNotes;
+	if (inScaleMode) {
+		NoteSet& scaleNotes = getScaleNotes();
+		for (uint8_t idx = 0; idx < getScaleNoteCount(); ++idx) {
+			octaveScaleNotes.add(scaleNotes[idx]);
+		}
+	}
+
+	for (int32_t x = 0; x < kDisplayWidth; x++) {
+		for (int32_t y = 0; y < kDisplayHeight; ++y) {
+			int32_t chordNo = getChordNo(y);
 			int32_t pageNo = std::min<int32_t>(chordNo / kDisplayHeight, kVerticalPages - 1);
 
-			if (getScaleModeEnabled()) {
-				NoteSet& scaleNotes = getScaleNotes();
-				int32_t noteCode = noteFromCoords(x);
-				uint16_t noteWithinScale = (uint16_t)(noteCode - getRootNote()) % kOctaveSize;
+			ChordQuality quality = state.chordList.chords[chordNo].quality;
+			int32_t noteCode = noteFromCoords(x, y);
 
+			uint16_t noteWithinScale = (uint16_t)((noteCode + kOctaveSize) - getRootNote()) % kOctaveSize;
+
+			if (y < state.rootRows) {
+				RGB colour =
+				    noteColours[(x - ((state.rootRows + noteColours.size()) - y) * (getState().isomorphic.rowInterval))
+				                % noteColours.size()];
+				// if (octaveScaleNotes.has(noteWithinScale)) {
+				if (noteWithinScale == 0) {
+					image[y][x] = colour.dim(1);
+				}
+				else {
+					image[y][x] = colours::black;
+				}
+
+				// if ((y == state.rootRows - 1) || (y == 0)) {
+				// 	image[y][x] = noteColours[x % noteColours.size()].dim(4);
+				// }
+				// else {
+				// 	image[y][x] = colours::black;
+				// }
+				continue;
+			}
+
+			// even if not in scale mode we still have a root defined
+			if (inScaleMode) {
+				NoteSet& scaleNotes = getScaleNotes();
+
+				// D_PRINTLN("noteCode %d, noteWithinScale %d", noteCode, noteWithinScale);
+
+				NoteSet intervalSet = state.chordList.chords[chordNo].intervalSet;
+
+				// for (int i = 0; i < scaleNotes.count(); i++) {
+				// 	D_PRINTLN("scaleNotes %d", scaleNotes[i]);
+				// }
+				// for (int i = 0; i < intervalSet.count(); i++) {
+				// 	D_PRINTLN("intervalSet %d", intervalSet[i]);
+				// }
+
+				// D_PRINTLN("Scale Notes %d char %s", scaleNotes, scaleNotes);
+				// D_PRINTLN("intervalSet %d, char %s", intervalSet, intervalSet);
+				// for (int i = 0; i < noteWithinScale; i++) {
+				NoteSet newNoteSet = intervalSet.toOffset(noteWithinScale);
+
+				// for (int i = 0; i < newNoteSet.count(); i++) {
+				// 	// D_PRINTLN("newNoteSet %d", newNoteSet[i]);
+				// }
+				// D_PRINTLN("newNotelSet %d, char %s", newNoteSet, newNoteSet);
+				// }
 				// if in scale, color the column
-				if (scaleNotes.has(noteWithinScale)) {
+				if (newNoteSet.isSubsetOf(scaleNotes)) {
+					// if (scaleNotes.has(noteWithinScale)) {
 					// image[y][x] = noteColours[y];
-					image[y][x] = noteColours[x % noteColours.size()];
+					// image[y][x] = noteColours[x % noteColours.size()];
+					image[y][x] = qualityColours[quality];
 					// D_PRINTLN("node within scale %d", noteWithinScale);
 					// if (noteWithinScale == 0) {
 					// 	image[y][x] = noteColours[x % noteColours.size()];
@@ -142,32 +220,67 @@ void KeyboardLayoutChord::renderPads(RGB image[][kDisplayWidth + kSideBarWidth])
 
 					// image[y][x] = noteColours[x % noteColours.size()];
 				}
+				else if (scaleNotes.has(noteWithinScale)) {
+					// image[y][x] = noteColours[x % noteColours.size()].dim(4);
+					image[y][x] = qualityColours[quality].dim(2);
+				}
 				// color the column the page color
 				else {
-					image[y][x] = pageColours[pageNo].dim(5);
+					// image[y][x] = noteColours[x % noteColours.size()].dim(4);
+					image[y][x] = pageColours[pageNo].dim(4);
 				}
 			}
 			// if not in scale, color the entire column
 			else {
-				image[y][x] = noteColours[x % noteColours.size()];
+				// image[y][x] = noteColours[x % noteColours.size()];
+				image[y][x] = qualityColours[quality];
 			}
 
 			// We add a colored page color rows to the top and bottom of a page to help with navigation
 			// And to the 2nd to last column (2nd to last col will be overwritten in scale mode)
-			// We also use different colors for each page
-			if ((x == kDisplayWidth - 2)               // show we've reached the start of a new page
-			    || (chordNo % 8 == 0)                  // show we've reached the start of a new page
-			    || (chordNo % 8 == kDisplayHeight - 1) // show we've reached the end of a page
-			    || (chordNo == kUniqueChords - 1)      // show we've reach the very top
-			) {
-				image[y][x] = pageColours[pageNo].dim(5);
-			}
-			// We add chord quality to the rightmost column, we also do this last so it overwrites the other colors
-			if (x == kDisplayWidth - 1) {
-				image[y][x] = padQualityColours[y];
-			}
+			// // We also use different colors for each page
+			// if ((x == kDisplayWidth - 2)               // show we've reached the start of a new page
+			//     || (chordNo % 8 == 0)                  // show we've reached the start of a new page
+			//     || (chordNo % 8 == kDisplayHeight - 1) // show we've reached the end of a page
+			//     || (chordNo == kUniqueChords - 1)      // show we've reach the very top
+			// )
+			// if (
+			// 	(x == kDisplayWidth - 2)               // show we've reached the start of a new page
+			// 	|| (x == kDisplayWidth - 3)               // show we've reached the start of a new page
+			//     // || (chordNo % 8 == 0)                  // show we've reached the start of a new page
+			//     // || (chordNo % 8 == kDisplayHeight - 1) // show we've reached the end of a page
+			//     // || (chordNo == kUniqueChords - 1)      // show we've reach the very top
+			// ) {
+			// 	image[y][x] = pageColours[pageNo].dim(7);
+			// }
+			// else if (x == kDisplayWidth - 4) {
+			// 	image[y][x] = colours::black;
+			// }
+			// // We add chord quality to the rightmost column, we also do this last so it overwrites the other colors
+			// if (x == kDisplayWidth - 1) {
+			// 	image[y][x] = padQualityColours[y];
+			// }
+			// if (y == kDisplayHeight - 1) {
+			// 	// 	image[y][x] = padQualityColours[y];
+			// 	image[y][x] = noteColours[x % noteColours.size()].dim(4);
+			// }
+
+			// if (y == kDisplayHeight - 1) {
+			// 	// 	image[y][x] = padQualityColours[y];
+			// 	image[y][x] = noteColours[x % noteColours.size()].dim(4);
+			// }
 		}
 	}
+}
+
+int32_t KeyboardLayoutChord::noteFromCoords(int32_t x, int32_t y) {
+	KeyboardStateChord& state = getState().chord;
+	if (y < state.rootRows) {
+		return (getState().chord.noteOffset + x) - (((state.rootRows - 1) - y) * (getState().isomorphic.rowInterval));
+
+		// ((state.rootRows - y) * (12 - getState().isomorphic.rowInterval));
+	}
+	return getState().chord.noteOffset + x;
 }
 
 void KeyboardLayoutChord::drawChordName(int16_t noteCode, const char* chordName, const char* voicingName) {

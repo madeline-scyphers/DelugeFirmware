@@ -85,6 +85,9 @@ public:
 	 * overridden by what actual note is present
 	 */
 	void addMajorDependentModeNotes(uint8_t i, bool preferHigher, const NoteSet notesWithinOctavePresent);
+	/** Returns the NoteSet shifted up by a semitone.
+	 */
+	NoteSet toOffset(uint8_t offset);
 	/** Size of NoteSet, ie. the maximum number of notes it can hold.
 	 */
 	NoteSet toImpliedScale() const;
