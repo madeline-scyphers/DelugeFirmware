@@ -93,17 +93,21 @@ void KeyboardLayoutChord::handleHorizontalEncoder(int32_t offset, bool shiftEnab
 
 void KeyboardLayoutChord::precalculate() {
 	KeyboardStateChord& state = getState().chord;
+	if (!initializedNoteOffset) {
+		initializedNoteOffset = true;
+		state.noteOffset += getRootNote();
+	}
 
 	// Pre-Buffer colours for next renderings
 	for (int32_t y = 0; y < kDisplayHeight; ++y) {
 		int32_t chordNo = y + state.chordList.chordRowOffset;
 		ChordQuality quality = state.chordList.chords[chordNo].quality;
-		noteColours[y] = qualityColours[quality];
+		padQualityColours[y] = qualityColours[quality];
 	}
-	// for (int32_t i = 0; i < noteColours.size(); ++i) {
-	// 	noteColours[i] = getNoteColour(((state.noteOffset + i) % state.rowInterval) * state.rowColorMultiplier);
-	// }
-	uint8_t hueStepSize = 192 / (kVerticalPages - 1);  // 192 is the hue range for the rainbow
+	for (int32_t i = 0; i < noteColours.size(); ++i) {
+		noteColours[i] = getNoteColour(((state.noteOffset + i) % state.rowInterval) * state.rowColorMultiplier);
+	}
+	uint8_t hueStepSize = 192 / (kVerticalPages - 1); // 192 is the hue range for the rainbow
 	for (int32_t i = 0; i < pageColours.size(); ++i) {
 		pageColours[i] = getNoteColour(i * hueStepSize);
 	}
@@ -112,46 +116,56 @@ void KeyboardLayoutChord::precalculate() {
 void KeyboardLayoutChord::renderPads(RGB image[][kDisplayWidth + kSideBarWidth]) {
 	KeyboardStateChord& state = getState().chord;
 
-	// Iterate over grid image
 	for (int32_t y = 0; y < kDisplayHeight; ++y) {
 
 		for (int32_t x = 0; x < kDisplayWidth; x++) {
 			int32_t chordNo = y + state.chordList.chordRowOffset;
 			int32_t pageNo = std::min<int32_t>(chordNo / kDisplayHeight, kVerticalPages - 1);
+
 			if (getScaleModeEnabled()) {
 				NoteSet& scaleNotes = getScaleNotes();
 				int32_t noteCode = noteFromCoords(x);
 				uint16_t noteWithinScale = (uint16_t)(noteCode - getRootNote()) % kOctaveSize;
+
+				// if in scale, color the column
 				if (scaleNotes.has(noteWithinScale)) {
+					// image[y][x] = noteColours[y];
+					image[y][x] = noteColours[x % noteColours.size()];
+					// D_PRINTLN("node within scale %d", noteWithinScale);
+					// if (noteWithinScale == 0) {
+					// 	image[y][x] = noteColours[x % noteColours.size()];
+					// }
+					// else {
+					// 	image[y][x] = noteColours[x % noteColours.size()];
+					// 	// image[y][x] = pageColours[pageNo].rotate();
+					// }
+
 					// image[y][x] = noteColours[x % noteColours.size()];
-					image[y][x] = noteColours[y];
 				}
+				// color the column the page color
 				else {
 					image[y][x] = pageColours[pageNo].dim(5);
 				}
 			}
-
+			// if not in scale, color the entire column
 			else {
-				// We add a colored rows to the top and bottom of a page to help with navigation
-				// We also use different colors for each page
-				if (
-					x == 12 || x == 13  // show we've reached the start of a new page
-					// || (chordNo % 8 == kDisplayHeight - 1)  // show we've reached the end of a page
-					// || (chordNo == kUniqueChords - 1)  // show we've reach the very top
-					) {
-						image[y][x] = pageColours[pageNo].dim(5);
-					}
-					else {
-						image[y][x] = noteColours[y];
-					}
+				image[y][x] = noteColours[x % noteColours.size()];
 			}
-			// if (
-			// 	(chordNo % 8 == 0)  // show we've reached the start of a new page
-			// 	|| (chordNo % 8 == kDisplayHeight - 1)  // show we've reached the end of a page
-			// 	|| (chordNo == kUniqueChords - 1)  // show we've reach the very top
-			// 	) {
-			// 	image[y][x] = pageColours[pageNo].dim(4);
-			// }
+
+			// We add a colored page color rows to the top and bottom of a page to help with navigation
+			// And to the 2nd to last column (2nd to last col will be overwritten in scale mode)
+			// We also use different colors for each page
+			if ((x == kDisplayWidth - 2)               // show we've reached the start of a new page
+			    || (chordNo % 8 == 0)                  // show we've reached the start of a new page
+			    || (chordNo % 8 == kDisplayHeight - 1) // show we've reached the end of a page
+			    || (chordNo == kUniqueChords - 1)      // show we've reach the very top
+			) {
+				image[y][x] = pageColours[pageNo].dim(5);
+			}
+			// We add chord quality to the rightmost column, we also do this last so it overwrites the other colors
+			if (x == kDisplayWidth - 1) {
+				image[y][x] = padQualityColours[y];
+			}
 		}
 	}
 }
@@ -180,9 +194,7 @@ void KeyboardLayoutChord::drawChordName(int16_t noteCode, const char* chordName,
 }
 
 bool KeyboardLayoutChord::allowSidebarType(ColumnControlFunction sidebarType) {
-	if ((sidebarType == ColumnControlFunction::CHORD) || (sidebarType == ColumnControlFunction::DX) ||
-	    // TODO, when scales for chord keyboard are implemented, add this back in
-	    (sidebarType == ColumnControlFunction::SCALE_MODE)) {
+	if ((sidebarType == ColumnControlFunction::CHORD) || (sidebarType == ColumnControlFunction::DX)) {
 		return false;
 	}
 	return true;

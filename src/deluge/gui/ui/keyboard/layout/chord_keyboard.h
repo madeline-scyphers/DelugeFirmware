@@ -52,9 +52,10 @@ private:
 	void drawChordName(int16_t noteCode, const char* chordName, const char* voicingName = "");
 	inline int32_t noteFromCoords(int32_t x) { return getState().chord.noteOffset + x; }
 
+	std::array<RGB, kDisplayHeight> padQualityColours;
 	std::array<RGB, kOctaveSize> noteColours;
 	std::array<RGB, kVerticalPages> pageColours;
-
+	bool initializedNoteOffset = false;
 };
 
 }; // namespace deluge::gui::ui::keyboard::layout
